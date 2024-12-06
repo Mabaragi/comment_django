@@ -82,10 +82,15 @@ WSGI_APPLICATION = 'comment_back.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'database-comment',  # RDS 데이터베이스 이름
+        'USER': 'postgres',       # RDS 사용자 이름
+        'PASSWORD': '!960a4124',   # RDS 비밀번호
+        'HOST': 'database-comment.c9mag6mc6njq.ap-northeast-2.rds.amazonaws.com',   # RDS 엔드포인트
+        'PORT': '5432',                # PostgreSQL 기본 포트
     }
 }
+
 
 
 # Password validation
@@ -147,3 +152,14 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = 'user.CustomUser'  # 'myapp'은 CustomUser가 정의된 앱 이름
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': 'JWT Authorization header using the Bearer scheme. Example: "Bearer {token}"',
+        }
+    },
+}

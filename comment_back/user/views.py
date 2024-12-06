@@ -3,12 +3,15 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
-from typing import Dict
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.serializers import Serializer, CharField
+from rest_framework.permissions import AllowAny
+from typing import Dict
+
 from .models import CustomUser
 from .serializers import CustomUserSerializer
+
 
 # Serializer 정의
 class MessageSerializer(Serializer):
@@ -30,11 +33,13 @@ def get_index(request: Request) -> Response:
 
 
 class UserListView(APIView):
+    # permission_classes = [AllowAny]
     @swagger_auto_schema(
         operation_description="Retrieve a list of users",
         responses={200: CustomUserSerializer(many=True)},  # Swagger에 응답 스키마 표시
     )
     def get(self, request:Request) -> Response:
+        print(request.headers)
         users = CustomUser.objects.all()
         serializer = CustomUserSerializer(users, many=True)
         return Response(serializer.data)
