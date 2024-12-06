@@ -13,6 +13,19 @@ from .models import CustomUser
 from .serializers import CustomUserSerializer
 
 
+class UserListView(APIView):
+    # permission_classes = [AllowAny]
+    @swagger_auto_schema(
+        operation_description="Retrieve a list of users",
+        responses={200: CustomUserSerializer(many=True)},  # Swagger에 응답 스키마 표시
+    )
+    def get(self, request:Request) -> Response:
+        print(request.headers)
+        users = CustomUser.objects.all()
+        serializer = CustomUserSerializer(users, many=True)
+        return Response(serializer.data)
+
+
 # Serializer 정의
 class MessageSerializer(Serializer):
     message = CharField(help_text="A welcome message")
@@ -30,16 +43,3 @@ def get_index(request: Request) -> Response:
     data = {"message": "hellow worlds!"}
     serializer = MessageSerializer(data)
     return Response(serializer.data)
-
-
-class UserListView(APIView):
-    # permission_classes = [AllowAny]
-    @swagger_auto_schema(
-        operation_description="Retrieve a list of users",
-        responses={200: CustomUserSerializer(many=True)},  # Swagger에 응답 스키마 표시
-    )
-    def get(self, request:Request) -> Response:
-        print(request.headers)
-        users = CustomUser.objects.all()
-        serializer = CustomUserSerializer(users, many=True)
-        return Response(serializer.data)

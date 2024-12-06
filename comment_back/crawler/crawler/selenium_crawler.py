@@ -36,12 +36,12 @@ def get_title_with_selenium(series_id: int) -> dict:
         )
         image_src = image.get_attribute("src")
         return {'title': title, 'image_src': image_src}
-    except Exception as e:
-        return {"error" : e, 'message':'시리즈를 가져올 수 없습니다.'}
+    # except Exception as e:
+    #     return {"error" : e, 'message':'시리즈를 가져올 수 없습니다.'}
     finally:
         driver.quit()
 
 # 사용 예제
-series_id = 59071959
-title = get_title_with_selenium(series_id)
-print(f"제목: {title}")
+# series_id = 59071959
+# title = get_title_with_selenium(series_id)
+# print(f"제목: {title}")

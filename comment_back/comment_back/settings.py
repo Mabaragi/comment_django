@@ -43,7 +43,9 @@ INSTALLED_APPS = [
     'drf_yasg', # swgger doc
     'drf_spectacular', # drf api doc
     'rest_framework_simplejwt', # drf jwt
+
     'user',
+    'crawler',
 ]
 
 MIDDLEWARE = [
@@ -139,8 +141,11 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',  # 기본적으로 인증 필요
+        'rest_framework.permissions.AllowAny',  # 인증 필요 없음
     ],
+    # 'DEFAULT_PERMISSION_CLASSES': [
+    #     'rest_framework.permissions.IsAuthenticated',  # 기본적으로 인증 필요
+    # ],
 }
 
 
