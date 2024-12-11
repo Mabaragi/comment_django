@@ -1,0 +1,13 @@
+services:
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin-django
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com # 관리자 계정 이메일
+      PGADMIN_DEFAULT_PASSWORD: admin # 관리자 계정 비밀번호
+    ports:
+      - '5050:80'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+volumes:
+  pgadmin_data:

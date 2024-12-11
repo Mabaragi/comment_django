@@ -140,17 +140,17 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # 인증 필요 없음
-    ],
     # 'DEFAULT_PERMISSION_CLASSES': [
-    #     'rest_framework.permissions.IsAuthenticated',  # 기본적으로 인증 필요
+    #     'rest_framework.permissions.AllowAny',  # 인증 필요 없음
     # ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # 기본적으로 인증 필요
+    ],
 }
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Access 토큰 유효 시간
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Access 토큰 유효 시간
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    # Refresh 토큰 유효 시간
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
