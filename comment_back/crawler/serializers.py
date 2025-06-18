@@ -22,6 +22,15 @@ class SeriesCreateSerializer(serializers.ModelSerializer):
 
 
 class EpisodeSerializer(serializers.ModelSerializer):
+    def __init__(self, *args, **kwargs):
+        fields = kwargs.pop("fields", None)
+        super().__init__(*args, **kwargs)
+        if fields:
+            allowed = set(fields)
+            existing = set(self.fields.keys())
+            for field_name in existing - allowed:
+                self.fields.pop(field_name)
+
     class Meta:
         model = Episode
         fields = "__all__"
@@ -42,7 +51,7 @@ class EpisodeCreateSerializer(serializers.ModelSerializer):
 
 class EpisodeCreateResponseSerializer(serializers.Serializer):
     created_data = EpisodeSerializer(many=True)
-    errors = serializers.ListField(child=serializers.DictField())
+    errors_items = serializers.ListField(child=serializers.DictField())
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -53,4 +62,4 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class CommentCreateResponseSerializer(serializers.Serializer):
     created_data = CommentSerializer(many=True)
-    errors = serializers.ListField(child=serializers.DictField())
+    error_items = serializers.ListField(child=serializers.DictField())

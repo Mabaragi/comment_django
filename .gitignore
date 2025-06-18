@@ -166,6 +166,12 @@ cython_debug/
 
 # Chromedriver
 chromedriver
+chromedriver-linux64.zip
+chromedriver_linux64.zip
+LICENSE.chromedriver
+
+#testfiles
+output.html
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

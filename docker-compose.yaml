@@ -1,13 +1,43 @@
 services:
+  django:
+    build: .
+    container_name: django_app
+    command: bash -c "poetry install --no-root && python comment_back/manage.py migrate && python comment_back/manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - '8000:8000'
+    environment:
+      - DATABASE_NAME=postgres
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+    depends_on:
+      - db
+
+  db:
+    image: postgres:14 vlfx
+    container_name: postgres_db
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+
   pgadmin:
     image: dpage/pgadmin4
-    container_name: pgadmin-django
+    container_name: pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com # 관리자 계정 이메일
-      PGADMIN_DEFAULT_PASSWORD: admin # 관리자 계정 비밀번호
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
     ports:
       - '5050:80'
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+
 volumes:
-  pgadmin_data:
+  postgres_data:

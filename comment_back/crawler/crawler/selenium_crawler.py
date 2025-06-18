@@ -4,42 +4,91 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import (
+    TimeoutException,
+    NoSuchElementException,
+    WebDriverException,
+)
+
 from dotenv import load_dotenv
 import os
+from ..utils import handle_exception
 
 load_dotenv()
-CHROME_DRIVER_PATH = os.getenv('CHROME_DRIVER_PATH')
-print(CHROME_DRIVER_PATH)
+CHROME_DRIVER_PATH = os.getenv("CHROME_DRIVER_PATH")
+
+
+class SeleniumCrawlError(Exception):
+    """기본 Selenium 크롤링 예외"""
+
+    pass
+
+
+class SeleniumTimeoutError(SeleniumCrawlError):
+    """요소 로딩 타임아웃 예외"""
+
+    pass
+
+
+class SeleniumElementNotFoundError(SeleniumCrawlError):
+    """요소가 아예 존재하지 않을 때"""
+
+    pass
+
+
+class SeleniumDriverError(SeleniumCrawlError):
+    """웹드라이버 실행 실패"""
+
+    pass
+
+
 def get_title_with_selenium(series_id: int) -> dict:
     url = f"https://page.kakao.com/content/{series_id}"
-    
+    print(CHROME_DRIVER_PATH)
     # Selenium 설정
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    chrome_options.binary_location = "/usr/bin/google-chrome"
+    chrome_options.add_argument("--headless=new")  # Headless 모드 사용
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    
-    service = Service(CHROME_DRIVER_PATH)  # chromedriver 경로 지정
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    
+
+    driver = None
     try:
-        driver.get(url)
-        
-        # 제목 요소 대기 및 추출
+        service = Service(CHROME_DRIVER_PATH)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         wait = WebDriverWait(driver, 10)
-        title_element = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "span.font-large3-bold.text-ellipsis"))
-        )
-        title = title_element.text.strip()
-        image = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div.relative.overflow-hidden.h-326pxr.w-320pxr.pt-40pxr > div.relative.h-full.min-h-\[inherit\] > div > div > div.jsx-1044487760.image-container.relative > img"))
-        )
-        image_src = image.get_attribute("src")
-        return {'title': title, 'image_src': image_src}
-    # except Exception as e:
-    #     return {"error" : e, 'message':'시리즈를 가져올 수 없습니다.'}
+        driver.get(url)
+
+        try:
+            title_element = wait.until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "span.font-large3-bold.text-ellipsis")
+                )
+            )
+            image_element = wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'img[alt="썸네일"]'))
+            )
+        except TimeoutException as e:
+            handle_exception(e, SeleniumTimeoutError, "요소 로딩 시간 초과")
+        except NoSuchElementException as e:
+            handle_exception(e, SeleniumElementNotFoundError, "요소를 찾을 수 없음")
+
+        return {
+            "title": title_element.text.strip(),
+            "image_src": image_element.get_attribute("src"),
+        }
+
+    except WebDriverException as e:
+        handle_exception(e, SeleniumDriverError, "웹드라이버 실행 오류")
+
+    except Exception as e:
+        # 기타 예상하지 못한 에러
+        handle_exception(e, SeleniumCrawlError, "알 수 없는 셀레늄 크롤링 오류")
+
     finally:
-        driver.quit()
+        if driver:
+            driver.quit()
+
 
 # 사용 예제
 # series_id = 59071959

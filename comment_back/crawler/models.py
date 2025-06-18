@@ -12,6 +12,7 @@ class Series(models.Model):  # models.Model을 상속해야 Django 모델로 인
 class Episode(models.Model):
     id = models.IntegerField(primary_key=True)  # 기본 키 설정
     name = models.CharField(max_length=100)
+    image_src = models.TextField()
     category = models.CharField(max_length=10)
     subcategory = models.CharField(max_length=20)
     series = models.ForeignKey(Series, on_delete=models.CASCADE)
@@ -29,5 +30,5 @@ class Comment(models.Model):
     user_thumbnail_url = models.TextField()
     user_uid = models.IntegerField()
 
-    episode = models.ForeignKey(Episode, on_delete=models.CASCADE)
     series = models.ForeignKey(Series, on_delete=models.CASCADE)
+    episode = models.ForeignKey(Episode, on_delete=models.CASCADE)

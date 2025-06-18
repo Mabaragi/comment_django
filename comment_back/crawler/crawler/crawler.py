@@ -5,6 +5,7 @@ from typing import List, Dict
 from bs4 import BeautifulSoup
 import logging, requests
 
+from pprint import pprint
 
 # logging.basicConfig(level=logging.INFO)
 # logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ def crawl_episode_comments(
     series_id: int,
     product_id: int,
     page: int = 0,
-    last_comment_uid: int = None,
+    last_comment_uid: int | None = None,
 ) -> Dict:
     """특정 에피소드의 댓글 데이터 크롤링"""
     return client.execute(
@@ -124,7 +125,7 @@ def get_comment_count_by_episode(series_id: int, product_id: int) -> int:
     )
 
 
-def get_episode_by_series(series_id: int, after: str = None) -> Dict:
+def get_episode_by_series(series_id: int, after: str | None = None) -> Dict:
     """특정 시리즈의 에피소드 데이터를 가져옴"""
     variables = {"seriesId": series_id, "after": after, "sortType": "asc"}
     data = client.execute(episode_query, variable_values=variables)
@@ -141,8 +142,8 @@ def get_all_episodes_by_series(series_id: int) -> List[Dict]:
     """특정 시리즈의 모든 에피소드를 가져옴"""
     after = "0"
     page = 0
-    episode_list = []
 
+    edges = []
     while True:
         content = get_episode_by_series(series_id=series_id, after=after)
         if page == 0:
@@ -150,21 +151,27 @@ def get_all_episodes_by_series(series_id: int) -> List[Dict]:
             page_count = get_page_count(total_count)
 
         has_next_page = content.get("pageInfo", {}).get("hasNextPage", False)
-        episode_list.extend(content.get("edges", []))
+        edges.extend(content.get("edges", []))
         after = f"{int(after) + ITEM_PER_PAGE}"
 
         if not has_next_page or page >= page_count:
             break
-    episodes = [episode["node"]["eventLog"]["eventMeta"] for episode in episode_list]
-    keeped_keys = ["id", "category", "name", "subcategory"]
-    result = [
-        {
-            **{key: episode[key] for key in keeped_keys if key in episode},
-            "series": series_id,
-        }
-        for episode in episodes
-    ]
-    return result
+
+    episodes = []
+    episodes = [episode["node"]["eventLog"]["eventMeta"] for episode in edges]
+    for edge in edges:
+        meta = edge["node"]["eventLog"]["eventMeta"]
+        episodes.append(
+            {
+                "id": meta["id"],
+                "category": meta["category"],
+                "name": meta["name"],
+                "subcategory": meta["subcategory"],
+                "image_src": edge["node"]["single"]["thumbnail"],
+                "series": series_id,
+            }
+        )
+    return episodes
 
 
 def test_get_all_episodes_by_series(series_id: int) -> tuple[List[Dict], int]:
