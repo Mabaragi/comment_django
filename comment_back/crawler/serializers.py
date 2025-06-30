@@ -2,7 +2,22 @@ from rest_framework import serializers
 from .models import *
 
 
-class SeriesSerializer(serializers.ModelSerializer):
+class DynamicFieldsModelSerializer(serializers.ModelSerializer):
+    """
+    동적으로 필드를 선택할 수 있는 베이스 Serializer
+    """
+
+    def __init__(self, *args, **kwargs):
+        fields = kwargs.pop("fields", None)
+        super().__init__(*args, **kwargs)
+        if fields:
+            allowed = set(fields)
+            existing = set(self.fields.keys())
+            for field_name in existing - allowed:
+                self.fields.pop(field_name)
+
+
+class SeriesSerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = Series
         fields = "__all__"
@@ -21,16 +36,7 @@ class SeriesCreateSerializer(serializers.ModelSerializer):
         return value
 
 
-class EpisodeSerializer(serializers.ModelSerializer):
-    def __init__(self, *args, **kwargs):
-        fields = kwargs.pop("fields", None)
-        super().__init__(*args, **kwargs)
-        if fields:
-            allowed = set(fields)
-            existing = set(self.fields.keys())
-            for field_name in existing - allowed:
-                self.fields.pop(field_name)
-
+class EpisodeSerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = Episode
         fields = "__all__"
@@ -54,7 +60,7 @@ class EpisodeCreateResponseSerializer(serializers.Serializer):
     errors_items = serializers.ListField(child=serializers.DictField())
 
 
-class CommentSerializer(serializers.ModelSerializer):
+class CommentSerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = Comment
         fields = "__all__"

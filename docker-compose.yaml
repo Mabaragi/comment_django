@@ -2,7 +2,7 @@ services:
   django:
     build: .
     container_name: django_app
-    command: bash -c "poetry install --no-root && python comment_back/manage.py migrate && python comment_back/manage.py runserver 0.0.0.0:8000"
+    command: bash -c "python comment_back/manage.py migrate && python comment_back/manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
@@ -17,7 +17,7 @@ services:
       - db
 
   db:
-    image: postgres:14 vlfx
+    image: postgres:14
     container_name: postgres_db
     environment:
       - POSTGRES_DB=postgres

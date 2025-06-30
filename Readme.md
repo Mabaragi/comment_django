@@ -3,6 +3,8 @@
 ```sql
  -- postgres 컨테이너에 접속
 docker exec -it postgres_db psql -U postgres
+docker exec -it django_app bash
+
 
  -- 데이터베이스 목록 보기
 \l

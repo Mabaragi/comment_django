@@ -30,6 +30,7 @@ ALLOWED_HOSTS = ["localhost", "3.35.102.51"]
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:4173",
+    "http://localhost:6006",
 ]
 
 # Application definition
@@ -48,6 +49,7 @@ INSTALLED_APPS = [
     "user",
     "crawler",
     "corsheaders",  # CORS 헤더 추가를 위한 앱
+    "llm",  # LLM 관련 앱
 ]
 
 MIDDLEWARE = [
@@ -158,6 +160,7 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),  # Refresh 토큰 유효 시간
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": True,
+    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
 }
 
 AUTH_USER_MODEL = "user.CustomUser"  # 'myapp'은 CustomUser가 정의된 앱 이름
@@ -172,3 +175,5 @@ SWAGGER_SETTINGS = {
         }
     },
 }
+
+INFER_SERVER_URL = "http://host.docker.internal:8001/infer"

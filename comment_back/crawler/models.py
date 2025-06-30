@@ -24,6 +24,8 @@ class Comment(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField()
     is_best = models.BooleanField()
+    like_count = models.IntegerField(default=0)  # 좋아요 수
+    emoticon = models.JSONField(default=None, null=True)
 
     # 이 유저는 이 서비스의 유저가 아님, 댓글을 단 유저를 식별하기 위함.
     user_name = models.CharField(max_length=100)

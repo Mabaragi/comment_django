@@ -3,7 +3,8 @@ from .views import *
 
 urlpatterns = [
     # path('', SeriesListView.as_view(), name='series-list'),
-    path("series/", SeriesView.as_view(), name="series"),
+    path("series/", SeriesListView.as_view(), name="series-list"),
+    path("series/crawl/", SeriesView.as_view(), name="series-crawl"),
     path("series/<int:series_id>/", SeriesDetailView.as_view(), name="series-detail"),
     path(
         "series/<int:series_id>/episode/crawl",
@@ -16,13 +17,18 @@ urlpatterns = [
         name="episode-list",
     ),
     path(
-        "series/<int:series_id>/episode/<int:product_id>/",
+        "episode/<int:product_id>/",
         EpisodeDetailView.as_view(),
         name="episode-detail",
     ),
     path(
-        "series/<int:series_id>/episode/<int:product_id>/comment",
-        CommentView.as_view(),
+        "episode/<int:product_id>/comment",
+        CommentListView.as_view(),
         name="comment",
+    ),
+    path(
+        "episode/<int:product_id>/comment/crawl",
+        CommentCrawlView.as_view(),
+        name="comment-crawl",
     ),
 ]

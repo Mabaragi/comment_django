@@ -108,6 +108,8 @@ def get_comments_by_episode(series_id: int, product_id: int) -> List[Dict]:
             "user_name": comment["userName"],
             "user_thumbnail_url": comment["userThumbnailUrl"],
             "user_uid": comment["userUid"],
+            "like_count": comment["likeCount"],
+            "emoticon": comment["emoticon"],
             "series": series_id,
             "episode": product_id,
         }

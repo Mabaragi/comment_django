@@ -18,6 +18,10 @@ from .crawler.crawler import (
     get_comment_count_by_episode,
     get_comments_by_episode,
 )
+from utils.swagger import get_fields_query_parameter, get_path_parameter
+
+DEFAULT_SERIES_ID = "61822163"  # 기본 시리즈 ID
+DEFAULT_EPISODE_ID = "61823562"  # 기본 에피소드 ID
 
 
 def validate_and_separate_data(
@@ -47,17 +51,29 @@ def validate_and_separate_data(
     return valid_instances, valid_data, invalid_data
 
 
-class SeriesListView(APIView):
-    # permission_classes = [AllowAny]
+class SeriesListView(ListAPIView):
+    request: Request
+
+    def get_queryset(self):
+        field_params = self.request.query_params.get("fields", None)
+        if field_params:
+            fields = field_params.split(",")
+            return Series.objects.only(*fields)
+        return Series.objects.all()
+
+    def get_serializer(self, *args, **kwargs):
+        field_params = self.request.query_params.get("fields", None)
+        if field_params:
+            fields = field_params.split(",")
+            kwargs["fields"] = fields
+        return super().get_serializer(*args, **kwargs)
+
     @swagger_auto_schema(
-        operation_description="Retrieve a list of users",
-        # request_body=openapi.Schema(
-        #     type=openapi.TYPE_OBJECT,
-        #     properties={
-        #         'user_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='User ID'),
-        #     },
-        # ),
+        operation_description="Retrieve a list of series",
         responses={200: SeriesSerializer(many=True)},  # Swagger에 응답 스키마 표시
+        manual_parameters=[
+            get_fields_query_parameter(),
+        ],
     )
     def get(self, request: Request) -> Response:
         series = Series.objects.all()
@@ -66,22 +82,6 @@ class SeriesListView(APIView):
 
 
 class SeriesView(APIView):
-
-    @swagger_auto_schema(
-        operation_description="Retrieve a list of users",
-        # request_body=openapi.Schema(
-        #     type=openapi.TYPE_OBJECT,
-        #     properties={
-        #         'user_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='User ID'),
-        #     },
-        # ),
-        responses={200: SeriesSerializer(many=True)},  # Swagger에 응답 스키마 표시
-    )
-    def get(self, request: Request) -> Response:
-        series = Series.objects.all()
-        serializer = SeriesSerializer(series, many=True)
-        return Response(serializer.data)
-
     @swagger_auto_schema(
         operation_description="Create a series",
         request_body=SeriesCreateSerializer,  # Serializer를 직접 사용
@@ -127,6 +127,13 @@ class SeriesDetailView(APIView):
             200: SeriesSerializer,
             404: "Not Found",
         },  # Swagger에 응답 스키마 표시
+        manual_parameters=[
+            get_path_parameter(
+                name="series_id",
+                description="조회할 시리즈의 ID",
+                default=DEFAULT_SERIES_ID,
+            ),
+        ],
     )
     def get(self, request: Request, series_id: int) -> Response:
         try:
@@ -139,14 +146,7 @@ class SeriesDetailView(APIView):
 
 
 class EpisodeCrawlView(APIView):
-    @swagger_auto_schema(
-        operation_description="특정 시리즈의 에피소드를 보여줍니다.",
-        responses={200: EpisodeSerializer(many=True)},  # Swagger에 응답 스키마 표시
-    )
-    def get(self, request: Request, series_id: int) -> Response:
-        episodes = Episode.objects.filter(series=series_id)
-        serializer = EpisodeSerializer(episodes, many=True)
-        return Response(serializer.data)
+    pass
 
     @swagger_auto_schema(
         operation_description="에피소드를 크롤링하여 db에 저장합니다.",
@@ -207,17 +207,16 @@ class EpisodeListView(ListAPIView):
 
     @swagger_auto_schema(
         manual_parameters=[
-            openapi.Parameter(
-                name="fields",
-                in_=openapi.IN_QUERY,
-                type=openapi.TYPE_STRING,
-                description="불러올 필드 이름을 쉼표로 구분하여 지정 (예: id,name,image_src)",
-                required=False,
-            )
+            get_fields_query_parameter(),
+            get_path_parameter(
+                name="series_id",
+                description="에피소드가 속한 시리즈의 ID",
+                default=DEFAULT_SERIES_ID,
+            ),
         ]
     )
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+    def get(self, request, series_id: int, *args, **kwargs):
+        return super().get(request, series_id, *args, **kwargs)
 
 
 class EpisodeDetailView(APIView):
@@ -226,11 +225,18 @@ class EpisodeDetailView(APIView):
         responses={
             200: EpisodeSerializer,
             404: "Not Found",
-        },  # Swagger에 응답 스키마 표시
+        },
+        manual_parameters=[
+            get_path_parameter(
+                name="product_id",
+                description="조회할 에피소드의 ID",
+                default=DEFAULT_EPISODE_ID,
+            ),
+        ],
     )
-    def get(self, request: Request, series_id: int, product_id: int) -> Response:
+    def get(self, request: Request, product_id: int) -> Response:
         try:
-            episode = Episode.objects.get(series=series_id, id=product_id)
+            episode = Episode.objects.get(id=product_id)
         except Episode.DoesNotExist:
             return Response({"error": "Episode not found"}, status=404)
 
@@ -238,25 +244,22 @@ class EpisodeDetailView(APIView):
         return Response(serializer.data)
 
 
-class CommentView(APIView):
-    @swagger_auto_schema(
-        operation_description="에피소드의 댓글을 조회합니다.",
-        responses={
-            200: CommentSerializer(),  # 상태 코드 207 사용
-        },
-    )
-    def get(self, request: Request, series_id: int, product_id: int) -> Response:
-        comments = Comment.objects.filter(series=series_id, episode=product_id)
-        serializer = CommentSerializer(comments, many=True)
-        return Response(serializer.data)
-
+class CommentCrawlView(APIView):
     @swagger_auto_schema(
         operation_description="에피소드의 댓글을 크롤링하여 db에 저장합니다.",
+        manual_parameters=[
+            get_path_parameter(
+                name="product_id",
+                description="댓글이 속한 에피소드의 ID",
+                default=DEFAULT_EPISODE_ID,
+            ),
+        ],
         responses={
             207: EpisodeCreateResponseSerializer(),  # 상태 코드 207 사용
         },
     )
-    def post(self, request: Request, series_id: int, product_id: int) -> Response:
+    def post(self, request: Request, product_id: int) -> Response:
+        series_id = Episode.objects.get(id=product_id).series.id
         comment_count = get_comment_count_by_episode(
             series_id=series_id, product_id=product_id
         )
@@ -278,3 +281,40 @@ class CommentView(APIView):
         return Response(
             {"created_data": valid_data, "errors": invalid_data}, status=207
         )
+
+
+class CommentListView(ListAPIView):
+    """
+    에피소드 댓글 목록을 조회하는 API 뷰입니다.
+    """
+
+    serializer_class = CommentSerializer
+    request: Request
+
+    def get_queryset(self):
+        product_id = self.kwargs.get("product_id")
+        fields_param = self.request.query_params.get("fields", None)
+        if fields_param:
+            fields = fields_param.split(",")
+            return Comment.objects.filter(episode=product_id).only(*fields)
+        return Comment.objects.filter(episode=product_id)
+
+    def get_serializer(self, *args, **kwargs):
+        fields_param = self.request.query_params.get("fields", None)
+        if fields_param:
+            fields = fields_param.split(",")
+            kwargs["fields"] = fields
+        return super().get_serializer(*args, **kwargs)
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            get_fields_query_parameter(),
+            get_path_parameter(
+                name="product_id",
+                description="댓글이 속한 에피소드의 ID",
+                default=DEFAULT_EPISODE_ID,
+            ),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
