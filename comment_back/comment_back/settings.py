@@ -33,6 +33,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:6006",
 ]
 
+INTERNAL_IPS = [
+    "127.0.0.1",
+    # "::1", # IPv6를 사용하는 경우 추가
+    "172.25.0.1",  # Docker 내부 IP (Docker Compose 사용 시)
+]
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -50,6 +56,7 @@ INSTALLED_APPS = [
     "crawler",
     "corsheaders",  # CORS 헤더 추가를 위한 앱
     "llm",  # LLM 관련 앱
+    "debug_toolbar",  # 디버그 툴바 앱
 ]
 
 MIDDLEWARE = [
@@ -61,6 +68,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",  # 디버그 툴바 미들웨어 추가
 ]
 
 ROOT_URLCONF = "comment_back.urls"
@@ -177,3 +185,28 @@ SWAGGER_SETTINGS = {
 }
 
 INFER_SERVER_URL = "http://host.docker.internal:8001/infer"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}

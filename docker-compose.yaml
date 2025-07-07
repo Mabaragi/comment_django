@@ -2,7 +2,7 @@ services:
   django:
     build: .
     container_name: django_app
-    command: bash -c "python comment_back/manage.py migrate && python comment_back/manage.py runserver 0.0.0.0:8000"
+    command: bash -c "cd comment_back && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:

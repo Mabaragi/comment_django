@@ -32,5 +32,13 @@ class Comment(models.Model):
     user_thumbnail_url = models.TextField()
     user_uid = models.IntegerField()
 
+    # AI 분류 관련 필드
+    ai_category = models.CharField(max_length=100, null=True, blank=True)
+    ai_reason = models.TextField(null=True, blank=True)
+
+    # AI 분류 완료 여부 플래그
+    is_ai_processed = models.BooleanField(default=False)
+    ai_processed_at = models.DateTimeField(null=True, blank=True)  # AI 처리 완료 시간
+
     series = models.ForeignKey(Series, on_delete=models.CASCADE)
     episode = models.ForeignKey(Episode, on_delete=models.CASCADE)

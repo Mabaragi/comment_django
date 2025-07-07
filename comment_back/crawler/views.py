@@ -11,6 +11,7 @@ from typing import Any
 
 from .models import Series
 from .serializers import *
+from .pagination import OptionalCountPagination
 from .crawler.selenium_crawler import get_title_with_selenium
 from .crawler.crawler import (
     get_all_episodes_by_series,
@@ -18,7 +19,11 @@ from .crawler.crawler import (
     get_comment_count_by_episode,
     get_comments_by_episode,
 )
-from utils.swagger import get_fields_query_parameter, get_path_parameter
+from utils.swagger import (
+    get_fields_query_parameter,
+    get_path_parameter,
+    get_ordering_query_parameter,
+)
 
 DEFAULT_SERIES_ID = "61822163"  # 기본 시리즈 ID
 DEFAULT_EPISODE_ID = "61823562"  # 기본 에피소드 ID
@@ -52,14 +57,26 @@ def validate_and_separate_data(
 
 
 class SeriesListView(ListAPIView):
+    serializer_class = SeriesSerializer
     request: Request
+    pagination_class = OptionalCountPagination
 
     def get_queryset(self):
+        queryset = Series.objects.all()
+
+        # 정렬 처리
+        ordering_param = self.request.query_params.get("ordering", None)
+        if ordering_param:
+            ordering_fields = ordering_param.split(",")
+            queryset = queryset.order_by(*ordering_fields)
+
+        # 필드 선택 처리
         field_params = self.request.query_params.get("fields", None)
         if field_params:
             fields = field_params.split(",")
-            return Series.objects.only(*fields)
-        return Series.objects.all()
+            queryset = queryset.only(*fields)
+
+        return queryset
 
     def get_serializer(self, *args, **kwargs):
         field_params = self.request.query_params.get("fields", None)
@@ -70,15 +87,34 @@ class SeriesListView(ListAPIView):
 
     @swagger_auto_schema(
         operation_description="Retrieve a list of series",
-        responses={200: SeriesSerializer(many=True)},  # Swagger에 응답 스키마 표시
         manual_parameters=[
             get_fields_query_parameter(),
+            get_ordering_query_parameter("id,-created_at,title"),
+            openapi.Parameter(
+                "include_count",
+                openapi.IN_QUERY,
+                description="전체 시리즈 개수를 포함할지 여부 (true/false). 성능 향상을 위해 필요시에만 사용하세요.",
+                type=openapi.TYPE_BOOLEAN,
+                default=False,
+            ),
+            openapi.Parameter(
+                "page",
+                openapi.IN_QUERY,
+                description="페이지 번호",
+                type=openapi.TYPE_INTEGER,
+                default=1,
+            ),
+            openapi.Parameter(
+                "page_size",
+                openapi.IN_QUERY,
+                description="페이지당 항목 수 (최대 100)",
+                type=openapi.TYPE_INTEGER,
+                default=20,
+            ),
         ],
     )
     def get(self, request: Request) -> Response:
-        series = Series.objects.all()
-        serializer = SeriesSerializer(series, many=True)
-        return Response(serializer.data)
+        return super().get(request)
 
 
 class SeriesView(APIView):
@@ -188,15 +224,26 @@ class EpisodeListView(ListAPIView):
     """
 
     serializer_class = EpisodeSerializer
+    pagination_class = OptionalCountPagination
     request: Request
 
     def get_queryset(self):
         series_id = self.kwargs.get("series_id")
+        queryset = Episode.objects.filter(series=series_id)
+
+        # 정렬 처리
+        ordering_param = self.request.query_params.get("ordering", None)
+        if ordering_param:
+            ordering_fields = ordering_param.split(",")
+            queryset = queryset.order_by(*ordering_fields)
+
+        # 필드 선택 처리
         fields_param = self.request.query_params.get("fields", None)
         if fields_param:
             fields = fields_param.split(",")
-            return Episode.objects.filter(series=series_id).only(*fields)
-        return Episode.objects.filter(series=series_id)
+            queryset = queryset.only(*fields)
+
+        return queryset
 
     def get_serializer(self, *args, **kwargs):
         fields_param = self.request.query_params.get("fields", None)
@@ -208,10 +255,32 @@ class EpisodeListView(ListAPIView):
     @swagger_auto_schema(
         manual_parameters=[
             get_fields_query_parameter(),
+            get_ordering_query_parameter("id,-created_at,name"),
             get_path_parameter(
                 name="series_id",
                 description="에피소드가 속한 시리즈의 ID",
                 default=DEFAULT_SERIES_ID,
+            ),
+            openapi.Parameter(
+                "include_count",
+                openapi.IN_QUERY,
+                description="전체 에피소드 개수를 포함할지 여부 (true/false). 성능 향상을 위해 필요시에만 사용하세요.",
+                type=openapi.TYPE_BOOLEAN,
+                default=False,
+            ),
+            openapi.Parameter(
+                "page",
+                openapi.IN_QUERY,
+                description="페이지 번호",
+                type=openapi.TYPE_INTEGER,
+                default=1,
+            ),
+            openapi.Parameter(
+                "page_size",
+                openapi.IN_QUERY,
+                description="페이지당 항목 수 (최대 100)",
+                type=openapi.TYPE_INTEGER,
+                default=20,
             ),
         ]
     )
@@ -290,14 +359,25 @@ class CommentListView(ListAPIView):
 
     serializer_class = CommentSerializer
     request: Request
+    pagination_class = OptionalCountPagination  # 커스텀 페이지네이션 클래스 사용
 
     def get_queryset(self):
         product_id = self.kwargs.get("product_id")
+        queryset = Comment.objects.filter(episode=product_id)
+
+        # 정렬 처리
+        ordering_param = self.request.query_params.get("ordering", None)
+        if ordering_param:
+            ordering_fields = ordering_param.split(",")
+            queryset = queryset.order_by(*ordering_fields)
+
+        # 필드 선택 처리
         fields_param = self.request.query_params.get("fields", None)
         if fields_param:
             fields = fields_param.split(",")
-            return Comment.objects.filter(episode=product_id).only(*fields)
-        return Comment.objects.filter(episode=product_id)
+            queryset = queryset.only(*fields)
+
+        return queryset
 
     def get_serializer(self, *args, **kwargs):
         fields_param = self.request.query_params.get("fields", None)
@@ -309,10 +389,32 @@ class CommentListView(ListAPIView):
     @swagger_auto_schema(
         manual_parameters=[
             get_fields_query_parameter(),
+            get_ordering_query_parameter("id,-created_at,content"),
             get_path_parameter(
                 name="product_id",
                 description="댓글이 속한 에피소드의 ID",
                 default=DEFAULT_EPISODE_ID,
+            ),
+            openapi.Parameter(
+                "include_count",
+                openapi.IN_QUERY,
+                description="전체 댓글 개수를 포함할지 여부 (true/false). 성능 향상을 위해 필요시에만 사용하세요.",
+                type=openapi.TYPE_BOOLEAN,
+                default=False,
+            ),
+            openapi.Parameter(
+                "page",
+                openapi.IN_QUERY,
+                description="페이지 번호",
+                type=openapi.TYPE_INTEGER,
+                default=1,
+            ),
+            openapi.Parameter(
+                "page_size",
+                openapi.IN_QUERY,
+                description="페이지당 항목 수 (최대 100)",
+                type=openapi.TYPE_INTEGER,
+                default=20,
             ),
         ]
     )

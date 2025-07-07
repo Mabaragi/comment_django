@@ -117,3 +117,18 @@ class CommentsSummaryResultView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CommentClassificationView(APIView):
+    """
+    댓글 유형을 분류하는 View 입니다.
+    """
+
+    async def get(self, request: Request, episode_id: int):
+        """
+        Retrieve the classification result for comments in a specific episode.
+        """
+        episode = get_object_or_404(Episode, id=episode_id)
+        comments = Comment.objects.filter(episode=episode)
+        serializer = CommentsSummarySerializer(comments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

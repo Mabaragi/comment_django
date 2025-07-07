@@ -20,5 +20,6 @@ RUN poetry config virtualenvs.create false
 
 # 프로젝트 파일 복사
 COPY pyproject.toml poetry.lock* /app/
+RUN poetry add psycopg2-binary
 RUN poetry install --no-root
 COPY . /app

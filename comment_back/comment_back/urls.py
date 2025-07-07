@@ -24,6 +24,7 @@ from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from user.views import CustomTokenObtainPairView
+from django.conf import settings
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -58,3 +59,10 @@ urlpatterns = [
         "token/refresh/", TokenRefreshView.as_view(), name="token_refresh"
     ),  # JWT 갱신
 ]
+
+if settings.DEBUG:  # DEBUG 모드일 때만 Debug Toolbar를 활성화
+    import debug_toolbar
+
+    urlpatterns += [
+        path("__debug__/", include(debug_toolbar.urls)),
+    ]
