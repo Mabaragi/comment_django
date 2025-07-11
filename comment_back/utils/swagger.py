@@ -1,6 +1,8 @@
 from drf_yasg import openapi
 from typing import Optional
 
+DEFAULT_EPISODE_ID = "61823562"  # 기본 에피소드 ID
+
 
 def get_fields_query_parameter(example: str = "id,name,image_src") -> openapi.Parameter:
     return openapi.Parameter(

@@ -23,10 +23,10 @@ from utils.swagger import (
     get_fields_query_parameter,
     get_path_parameter,
     get_ordering_query_parameter,
+    DEFAULT_EPISODE_ID,
 )
 
 DEFAULT_SERIES_ID = "61822163"  # 기본 시리즈 ID
-DEFAULT_EPISODE_ID = "61823562"  # 기본 에피소드 ID
 
 
 def validate_and_separate_data(

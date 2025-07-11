@@ -6,11 +6,15 @@ from rest_framework.response import Response  # 추가
 from rest_framework import status  # 추가
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .models import CommentAnalysisResult
+from .models import CommentAnalysisResult, CommentsSummaryResult
 from crawler.models import Comment, Episode
 from rest_framework.generics import DestroyAPIView
 from rest_framework.permissions import AllowAny
-from utils.swagger import get_fields_query_parameter, get_path_parameter
+from utils.swagger import (
+    get_fields_query_parameter,
+    get_path_parameter,
+    DEFAULT_EPISODE_ID,
+)
 
 # Create your views here.
 
@@ -101,22 +105,84 @@ class CommentsSummaryResultView(APIView):
     댓글 감정 분석 결과 요약을 조회하는 API 뷰입니다.
     """
 
+    @swagger_auto_schema(
+        operation_description="댓글 요약 생성",
+        manual_parameters=[
+            get_path_parameter(
+                "episode_id",
+                description="에피소드의 ID",
+                default=DEFAULT_EPISODE_ID,
+            ),
+        ],
+        responses={200: CommentsSummarySerializer(many=True), 404: "Not Found"},
+    )
     def post(self, request: Request, episode_id: int):
         """
         Create a summary of comment emotion analysis results.
         """
-        episode = get_object_or_404(Episode, id=episode_id)
-        # 최신순 100개만 선별
-        comments = Comment.objects.filter(episode=episode).order_by("-created_at")[:100]
+        get_object_or_404(Episode, id=episode_id)
+        comments = (
+            Comment.objects.filter(episode=episode_id)
+            .order_by("-created_at")
+            .values_list("id", "content")
+        )
+        source_comments = [
+            {"id": comment[0], "content": comment[1]} for comment in comments
+        ]
         data = {
-            "episode": episode.id,
-            "comments": [comment.id for comment in comments],
+            "episode": episode_id,
+            "source_comments": source_comments,  # 댓글 ID 목록을 전달
         }
         serializer = CommentsSummarySerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        operation_description="댓글 요약 조회",
+        manual_parameters=[
+            get_path_parameter(
+                "episode_id",
+                description="에피소드의 ID",
+                default=DEFAULT_EPISODE_ID,
+            ),
+        ],
+        responses={200: CommentsSummarySerializer(many=True), 404: "Not Found"},
+    )
+    def get(self, request: Request, episode_id: int):
+        summary_results = CommentsSummaryResult.objects.filter(episode=episode_id)
+        # summary_results = CommentsSummaryResult.objects.all()
+        serializer = CommentsSummarySerializer(summary_results, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @swagger_auto_schema(
+        operation_description="댓글 요약 삭제",
+        manual_parameters=[
+            get_path_parameter(
+                "episode_id",
+                description="에피소드의 ID",
+                default=DEFAULT_EPISODE_ID,
+            ),
+        ],
+        responses={
+            204: "삭제 성공 (No Content)",
+            404: "No summaries found for this episode.",
+        },
+    )
+    def delete(self, request: Request, episode_id: int):
+        """
+        Delete all comment summaries for a specific episode.
+        """
+        summary_results = CommentsSummaryResult.objects.filter(episode=episode_id)
+        if not summary_results.exists():
+            return Response(
+                {"detail": "No summaries found for this episode."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        summary_results.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CommentClassificationView(APIView):
