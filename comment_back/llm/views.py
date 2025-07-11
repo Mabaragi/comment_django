@@ -124,10 +124,11 @@ class CommentsSummaryResultView(APIView):
         comments = (
             Comment.objects.filter(episode=episode_id)
             .order_by("-created_at")
-            .values_list("id", "content")
+            .values_list("id", "content", "is_best")
         )
         source_comments = [
-            {"id": comment[0], "content": comment[1]} for comment in comments
+            {"id": comment[0], "content": comment[1], "is_best": comment[2]}
+            for comment in comments
         ]
         data = {
             "episode": episode_id,

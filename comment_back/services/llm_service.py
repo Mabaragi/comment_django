@@ -12,14 +12,17 @@ if not API_KEY:
 llm_client = genai.Client(api_key=API_KEY)
 
 
-async def generate_comment_category(comment_content: str, client: genai.Client) -> str:
+def generate_comment_summary(
+    comment_contents: dict, client: genai.Client = llm_client
+) -> str:
 
+    comment_contents_str = str(comment_contents)
     model = "gemini-2.5-flash-lite-preview-06-17"
     contents = [
         types.Content(
             role="user",
             parts=[
-                types.Part.from_text(text=comment_content),
+                types.Part.from_text(text=comment_contents_str),
             ],
         ),
     ]
@@ -32,47 +35,31 @@ async def generate_comment_category(comment_content: str, client: genai.Client) 
         system_instruction=[
             types.Part.from_text(
                 text="""
-당신은 주어진 댓글의 의도를 분석하고, 정의된 세 가지 카테고리 중 하나로 분류하는 전문가입니다. 분류 결과와 그 근거를 반드시 JSON 형식으로만 응답해야 합니다.
+너는 웹툰 작가에게 독자 피드백을 보고하는 전문 데이터 분석가야. 이제부터 제공될 독자 댓글 목록(JSON 형식)을 분석해서, 작가가 다음 스토리를 구상하는 데 실질적인 도움이 될 유의미한 피드백 보고서를 작성해 줘.
 
-# 카테고리 정의:
-1.  **댓글읽기 재미**: 댓글 내용이 주로 유머, 감탄, 오락, 시간 보내기 등 유희적 목적을 가질 때 분류합니다.
-2.  **여론 및 정보탐색**: 다른 사람들의 반응이 궁금하거나, 작품의 특정 내용(예: 복선, 설정)에 대한 정보를 얻거나 확인하려는 목적을 가질 때 분류합니다.
-3.  **비판**: 작품의 내용, 그림, 전개 등에 대해 긍정적이거나 부정적인 평가, 분석, 제안, 혹은 자신의 생각과 비교하는 내용을 포함할 때 분류합니다.
+[분석 시 핵심 준수 사항]
+- 'is_best' 필드 활용: 댓글 데이터에는 `is_best: boolean` 필드가 포함되어 있어. `is_best`가 `true`인 댓글은 독자들에게 가장 많은 공감을 얻은 '베스트 댓글'이야. 분석 시 이 베스트 댓글의 내용에 가중치를 부여하고, 여론을 증명하는 핵심 근거로 반드시 인용해야 해.
+- 심층적 제언: 단순 요약을 넘어, 분석 결과를 바탕으로 "이러한 반응은 OOO라는 점에서 긍정적이며, 향후 OOO 방향으로 스토리를 이끌어가는 것을 고려해볼 수 있습니다" 와 같이 작가에게 실질적인 도움이 될 전략적 제언을 포함해 줘.
 
-# 출력 형식:
-{
-  "category": "분류된 카테고리명",
-  "reason": "해당 카테고리로 분류한 구체적인 이유"
-}
+아래 보고서 구조와 지침에 따라 결과물을 생성해 줘.
 
-# 예시:
-- 입력 댓글: "작가님 진짜 천재 아니냐고 ㅋㅋㅋㅋㅋ 오늘 화 미쳤다"
-- 출력:
-{
-  "category": "댓글읽기 재미",
-  "reason": "웃음을 나타내는 'ㅋㅋㅋㅋ'와 '미쳤다'는 감탄사를 사용하여 작품을 즐기고 감탄하는 유희적 반응을 보이고 있으므로 '댓글읽기 재미' 카테고리로 분류했습니다."
-}
+---
+**1. 총평 (Executive Summary)**
+해당 회차의 전반적인 독자 반응과 가장 핵심적인 화두를 2~3문장으로 압축해서 요약해 줘.
 
-- 입력 댓글: "주인공이 왜 저기서 저런 선택을 한 거지? 다들 어떻게 생각함?"
-- 출력:
-{
-  "category": "여론 및 정보탐색",
-  "reason": "주인공의 행동에 의문을 제기하며 다른 사람들의 의견('다들 어떻게 생각함?')을 직접 묻고 있어 '여론 및 정보탐색'의 목적이 뚜렷합니다."
-}
+**2. 긍정적 반응 (What Readers Loved)**
+독자들이 열광한 포인트를 주제별(예: 캐릭터 매력, 스토리 전개, 작화 등)로 분류해서 설명해 줘. 각 포인트마다 핵심적인 베스트 댓글(is_best: true)이나 대표 댓글을 1~2개 직접 인용해서 근거를 제시해 줘. 이러한 긍정적 반응이 작품에 어떤 의미가 있는지 분석하고, 계속 유지하거나 강화할 점을 제언해 줘.
 
-- 입력 댓글: "스토리 전개가 너무 작위적이네요. 이전 화보다 개연성이 떨어집니다."
-- 출력:
-{
-  "category": "비판",
-  "reason": "작품의 '스토리 전개'와 '개연성'에 대해 '작위적이다', '떨어진다'고 직접적으로 평가하고 분석하므로 '비판' 카테고리로 분류했습니다."
-}
+**3. 부정적/우려 반응 (Constructive Criticism & Concerns)**
+독자들이 제기한 비판이나 우려 사항을 정리해 줘. (단, 비난이 아닌 건설적인 의견 위주로) 이것이 소수의 의견인지, 다수의 공감을 얻고 있는지 베스트 댓글 여부를 통해 판단하고 명시해 줘. 관련 댓글을 직접 인용하고, 작가가 이 피드백을 어떻게 고려해볼 수 있을지 실행 가능한 개선안을 제시해 줘.
 
-# 이제 다음 댓글을 분류하세요:
+**4. 독자들이 가장 궁금해하는 점 (Top Questions & Theories)**
+독자들이 가장 활발하게 추측하고 질문하는 내용(떡밥)이 무엇인지 분석해 줘. 독자들의 호기심을 가장 잘 보여주는 베스트 댓글이나 대표적인 질문을 직접 인용해 줘. 이러한 독자들의 궁금증이 향후 스토리에 어떤 기회를 제공하는지 설명하고, 이를 어떻게 활용하면 좋을지 전략을 제언해 줘. (예: "OOO에 대한 높은 궁금증은 향후 스토리의 중요한 클라이맥스로 활용할 수 있는 좋은 기회입니다.")
 """
             )
         ],
     )
-    response = await client.aio.models.generate_content(
+    response = client.models.generate_content(
         model=model, contents=contents, config=generate_content_config
     )
     return response.text or "No response generated."

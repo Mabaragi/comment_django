@@ -7,6 +7,7 @@ import requests
 from requests.exceptions import RequestException
 from django.conf import settings
 from crawler.models import Comment
+from services.llm_service import generate_comment_summary
 
 
 class CommentEmotionAnalysisSerializer(serializers.ModelSerializer):
@@ -62,8 +63,10 @@ class CommentsSummarySerializer(serializers.ModelSerializer):
         read_only_fields = ["summary"]
 
     def create(self, validated_data):
+        comment_contents = validated_data.get("source_comments", [])
+        summary = generate_comment_summary(comment_contents)
         summary_instance = CommentsSummaryResult.objects.create(
-            summary=" ",
+            summary=summary,
             **validated_data,
         )
         return summary_instance
