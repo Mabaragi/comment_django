@@ -4,7 +4,7 @@ from .views import *
 
 urlpatterns = [
     path(
-        "api/emotion-analysis/<int:comment_id>/",
+        "api/emotion-analysis/<int:episode_id>/",
         CommentEmotionAnalysisView.as_view(),
         name="emotion-analysis",
     ),

@@ -17,7 +17,7 @@ def generate_comment_summary(
 ) -> str:
 
     comment_contents_str = str(comment_contents)
-    model = "gemini-2.5-flash-lite-preview-06-17"
+    model = "gemini-2.5-flash-lite"
     contents = [
         types.Content(
             role="user",
@@ -63,6 +63,64 @@ def generate_comment_summary(
         model=model, contents=contents, config=generate_content_config
     )
     return response.text or "No response generated."
+
+
+def generate_comment_emotion(comments: list[dict], client: genai.Client = llm_client):
+    """
+    댓글의 감정 점수를 생성하는 함수 (예시: 긍정/부정/중립 및 점수 반환)
+    comment: {"id": ..., "content": ..., "is_best": ...}
+    """
+    model = "gemini-2.5-flash-lite"
+    comment_contents = str(comments[:100])  # 최대 100개 댓글만 처리
+    contents = [
+        types.Content(
+            role="user",
+            parts=[
+                types.Part.from_text(text=comment_contents),
+            ],
+        ),
+    ]
+    generate_content_config = types.GenerateContentConfig(
+        temperature=0,
+        thinking_config=types.ThinkingConfig(
+            thinking_budget=0,
+        ),
+        response_mime_type="application/json",
+        response_schema=types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "response": types.Schema(
+                    type=types.Type.ARRAY,
+                    items=types.Schema(
+                        type=types.Type.OBJECT,
+                        required=["score", "id", "reason"],
+                        properties={
+                            "score": types.Schema(
+                                type=types.Type.INTEGER,
+                            ),
+                            "id": types.Schema(
+                                type=types.Type.NUMBER,
+                            ),
+                            "reason": types.Schema(
+                                type=types.Type.STRING,
+                            ),
+                        },
+                    ),
+                ),
+            },
+        ),
+        system_instruction=[
+            types.Part.from_text(
+                text="""너는 감정 분석 전문가야. 댓글을 보고 '긍정', '부정', '중립' 중 하나로 분류하고, 0~100 사이의 감정 점수(긍정일수록 100, 부정일수록 0, 중립은 50)와 그렇게 반환한 이유를 JSON으로 반환해줘.
+"""
+            ),
+        ],
+    )
+    response = client.models.generate_content(
+        model=model, contents=contents, config=generate_content_config
+    )
+
+    return response.text
 
 
 __all__ = [

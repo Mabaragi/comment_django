@@ -35,6 +35,7 @@ class Comment(models.Model):
     # AI 분류 관련 필드
     ai_category = models.CharField(max_length=100, null=True, blank=True)
     ai_reason = models.TextField(null=True, blank=True)
+    ai_emotion_score = models.IntegerField(null=True)
 
     # AI 분류 완료 여부 플래그
     is_ai_processed = models.BooleanField(default=False)

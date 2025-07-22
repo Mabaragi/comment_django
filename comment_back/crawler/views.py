@@ -23,6 +23,7 @@ from utils.swagger import (
     get_fields_query_parameter,
     get_path_parameter,
     get_ordering_query_parameter,
+    get_page_parameter,
     DEFAULT_EPISODE_ID,
 )
 
@@ -104,13 +105,7 @@ class SeriesListView(ListAPIView):
                 type=openapi.TYPE_INTEGER,
                 default=1,
             ),
-            openapi.Parameter(
-                "page_size",
-                openapi.IN_QUERY,
-                description="페이지당 항목 수 (최대 100)",
-                type=openapi.TYPE_INTEGER,
-                default=20,
-            ),
+            get_page_parameter(),
         ],
     )
     def get(self, request: Request) -> Response:
@@ -275,13 +270,7 @@ class EpisodeListView(ListAPIView):
                 type=openapi.TYPE_INTEGER,
                 default=1,
             ),
-            openapi.Parameter(
-                "page_size",
-                openapi.IN_QUERY,
-                description="페이지당 항목 수 (최대 100)",
-                type=openapi.TYPE_INTEGER,
-                default=20,
-            ),
+            get_page_parameter(),
         ]
     )
     def get(self, request, series_id: int, *args, **kwargs):
@@ -409,13 +398,7 @@ class CommentListView(ListAPIView):
                 type=openapi.TYPE_INTEGER,
                 default=1,
             ),
-            openapi.Parameter(
-                "page_size",
-                openapi.IN_QUERY,
-                description="페이지당 항목 수 (최대 100)",
-                type=openapi.TYPE_INTEGER,
-                default=20,
-            ),
+            get_page_parameter(),
         ]
     )
     def get(self, request, *args, **kwargs):

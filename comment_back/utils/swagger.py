@@ -39,3 +39,13 @@ def get_path_parameter(
         default=default,
         required=True,
     )
+
+
+def get_page_parameter() -> openapi.Parameter:
+    return openapi.Parameter(
+        "page_size",
+        openapi.IN_QUERY,
+        description="페이지당 항목 수 (최대 10000)",
+        type=openapi.TYPE_INTEGER,
+        default=20,
+    )

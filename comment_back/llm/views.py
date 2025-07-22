@@ -15,62 +15,22 @@ from utils.swagger import (
     get_path_parameter,
     DEFAULT_EPISODE_ID,
 )
+from services.llm_service import generate_comment_emotion
+import json
+from typing import TypedDict, List
+from django.utils import timezone
+from logging import getLogger
 
-# Create your views here.
+logger = getLogger(__name__)
 
 
-class CommentEmotionAnalysisView(APIView):
-    """
-    View for analyzing the emotion of comments.
+class EmotionResult(TypedDict):
+    score: int
+    id: int
+    reason: str
 
-    Possible responses:
-        - 201 Created: Emotion analysis was successful.
-        - 400 Bad Request: Invalid input data.
-    """
 
-    @swagger_auto_schema(
-        operation_description="댓글 감정 분석 결과 조회",
-        manual_parameters=[
-            openapi.Parameter(
-                "comment_id",
-                openapi.IN_PATH,
-                description="조회할 댓글의 ID",
-                type=openapi.TYPE_INTEGER,
-                required=True,
-                default=165999266,
-            ),
-        ],
-        responses={200: CommentEmotionAnalysisSerializer(), 404: "Not Found"},
-    )
-    def get(self, request: Request, comment_id: int):
-        """
-        Retrieve the emotion analysis result for a specific comment.
-        """
-        analysis_result = get_object_or_404(
-            CommentAnalysisResult, comment_id=comment_id
-        )
-        serializer = CommentEmotionAnalysisSerializer(analysis_result)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @swagger_auto_schema(
-        operation_description="댓글 감정 분석 요청",
-        manual_parameters=[
-            get_path_parameter(
-                "comment_id",
-                description="분석할 댓글의 ID",
-                default=165999266,
-            ),
-        ],
-        responses={201: CommentEmotionAnalysisSerializer(), 400: "Bad Request"},
-    )
-    def post(self, request: Request, comment_id: int):
-        comment = get_object_or_404(Comment, id=comment_id)
-        data = {"comment": comment.id}  # Pass only comment_id
-        serializer = CommentEmotionAnalysisSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+EmotionResponse = dict[str, List[EmotionResult]]
 
 
 class CommentAnalysisResultDestroyView(DestroyAPIView):
@@ -98,6 +58,21 @@ class CommentAnalysisResultDestroyView(DestroyAPIView):
     )
     def delete(self, request, comment_id, *args, **kwargs):
         return super().delete(request, comment_id=comment_id, *args, **kwargs)
+
+
+class CommentClassificationView(APIView):
+    """
+    댓글 유형을 분류하는 View 입니다.
+    """
+
+    async def get(self, request: Request, episode_id: int):
+        """
+        Retrieve the classification result for comments in a specific episode.
+        """
+        episode = get_object_or_404(Episode, id=episode_id)
+        comments = Comment.objects.filter(episode=episode)
+        serializer = CommentsSummarySerializer(comments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CommentsSummaryResultView(APIView):
@@ -186,16 +161,66 @@ class CommentsSummaryResultView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class CommentClassificationView(APIView):
+class CommentEmotionAnalysisView(APIView):
     """
-    댓글 유형을 분류하는 View 입니다.
+    댓글 감정 분석 결과를 조회하는 API 뷰입니다.
     """
 
-    async def get(self, request: Request, episode_id: int):
+    def patch(self, request: Request, episode_id: int):
         """
-        Retrieve the classification result for comments in a specific episode.
+        댓글 감정 분석 결과를 생성하는 API 뷰입니다.
         """
         episode = get_object_or_404(Episode, id=episode_id)
-        comments = Comment.objects.filter(episode=episode)
-        serializer = CommentsSummarySerializer(comments, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        comments_to_process = Comment.objects.filter(
+            episode=episode, is_ai_processed=False
+        )
+        comments_map = {comment.id: comment for comment in comments_to_process}
+
+        source_comments = [
+            {"id": comment.id, "content": comment.content}
+            for comment in comments_to_process
+        ]
+
+        analysis_result = generate_comment_emotion(source_comments)
+        if not analysis_result:
+            raise ValueError("No analysis result generated.")
+
+        logger.debug(f"LLM 응답 수신: {analysis_result}")  # 로그 추가
+        try:
+            parsed_result: EmotionResponse = json.loads(analysis_result)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON 파싱 에러 발생: {e}")
+            return Response(
+                {"error": "Invalid JSON response from LLM."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        comments_to_update = []
+        for item in parsed_result.get("response", []):
+            comment_id = item.get("id")
+            # 댓글 객체 가져오기
+            comment = comments_map.get(comment_id)
+            if not comment:
+                continue
+
+            score = item.get("score")
+            reason = item.get("reason")
+
+            comment.ai_emotion_score = score
+            comment.ai_reason = reason
+            comment.is_ai_processed = True
+            comment.ai_processed_at = timezone.now()
+            comments_to_update.append(comment)
+
+        # 한 번에 데이터베이스에 저장
+        Comment.objects.bulk_update(
+            comments_to_update,
+            [
+                "ai_emotion_score",
+                "ai_reason",
+                "is_ai_processed",
+                "ai_processed_at",
+            ],
+        )
+
+        return Response(parsed_result, status=status.HTTP_200_OK)
