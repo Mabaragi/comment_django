@@ -2,8 +2,7 @@ from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 from .queries import COMMENT_QUERY, EPISODE_QUERY
 from typing import List, Dict
-from bs4 import BeautifulSoup
-import logging, requests
+
 
 from pprint import pprint
 
