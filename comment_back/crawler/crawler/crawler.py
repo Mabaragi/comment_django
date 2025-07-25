@@ -1,6 +1,6 @@
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
-from .queries import COMMENT_QUERY, EPISODE_QUERY
+from .queries import COMMENT_QUERY, EPISODE_QUERY, SERIES_QUERY
 from typing import List, Dict
 
 
@@ -41,7 +41,16 @@ transport = RequestsHTTPTransport(
 client = Client(transport=transport, fetch_schema_from_transport=False)
 comment_query = gql(COMMENT_QUERY)
 episode_query = gql(EPISODE_QUERY)
+series_query = gql(SERIES_QUERY)
 ITEM_PER_PAGE = 25
+
+
+def get_series_info(series_id: int) -> Dict:
+    """시리즈 정보를 가져오는 함수. 시리즈가 있는지 확인용"""
+    return client.execute(
+        series_query,
+        variable_values={"seriesId": series_id},
+    )
 
 
 def get_page_count(total_count: int) -> int:

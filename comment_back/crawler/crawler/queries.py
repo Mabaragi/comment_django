@@ -175,3 +175,17 @@ EPISODE_QUERY = """
       }
     }
     """
+
+SERIES_QUERY = """
+query simpleSeriesSingleInfo($seriesId: Long!, $productId: Long) {
+  simpleSeriesSingleInfo(productId: $productId, seriesId: $seriesId) {
+    seriesAgeGrade
+    singleAgeGrade
+    singleSlideType
+    singleIsFree
+    singleIsTextViewer
+    seriesSaleState
+    singleSaleState
+  }
+}
+"""

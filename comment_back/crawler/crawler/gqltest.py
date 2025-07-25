@@ -1,5 +1,6 @@
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
+import json
 
 # 1. GraphQL 엔드포인트 URL 설정
 GRAPHQL_ENDPOINT = "https://bff-page.kakao.com/graphql"
@@ -23,7 +24,7 @@ query = gql(query_string)  # gql 함수로 쿼리 문자열을 파싱합니다.
 
 # 3. 요청에 필요한 변수 (variables) 정의
 variables = {
-    "seriesId": 56611441,  # 테스트할 seriesId 값
+    "seriesId": 566114411,  # 테스트할 seriesId 값
     "productId": None,  # productId는 선택 사항이므로 None으로 설정
 }
 
@@ -67,8 +68,8 @@ try:
 
 except Exception as e:
     print(f"\n--- 에러 발생 ---")
-    print(f"GraphQL 요청 중 오류가 발생했습니다: {e}")
-    # 서버 응답 내용을 확인하려면, 에러 발생 시 response.text 등을 출력할 수 있습니다.
-    # RequestsHTTPTransport의 경우, 응답 객체에 접근하여 자세한 내용을 확인할 수 있습니다.
-    # 하지만 기본적으로 gql 라이브러리가 파싱 에러를 처리하므로, 직접 접근이 어려울 수 있습니다.
-    # 필요하다면 RequestsHTTPTransport를 상속받아 에러 처리 로직을 커스터마이징할 수도 있습니다.
+    # print(f"GraphQL 요청 중 오류가 발생했습니다: {e}")
+    try:
+        print(json.dumps(e.__dict__["errors"][0], ensure_ascii=False, indent=2))
+    except Exception as dump_err:
+        print(f"오류 객체를 JSON으로 덤프하는 중 추가 오류 발생: {dump_err}")

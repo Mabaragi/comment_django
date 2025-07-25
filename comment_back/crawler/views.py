@@ -14,6 +14,7 @@ from .serializers import *
 from .pagination import OptionalCountPagination
 from .crawler.selenium_crawler import get_title_with_selenium
 from .crawler.crawler import (
+    get_series_info,
     get_all_episodes_by_series,
     get_episode_count_by_series,
     get_comment_count_by_episode,
@@ -26,6 +27,7 @@ from utils.swagger import (
     get_page_parameter,
     DEFAULT_EPISODE_ID,
 )
+from utils.serializers import ErrorResponseSerializer
 
 DEFAULT_SERIES_ID = "61822163"  # 기본 시리즈 ID
 
@@ -116,7 +118,11 @@ class SeriesView(APIView):
     @swagger_auto_schema(
         operation_description="Create a series",
         request_body=SeriesCreateSerializer,  # Serializer를 직접 사용
-        responses={200: SeriesSerializer},  # 응답 스키마 표시
+        responses={
+            200: SeriesSerializer,
+            404: ErrorResponseSerializer,
+            500: ErrorResponseSerializer,
+        },
     )
     def post(self, request: Request) -> Response:
         serializer = SeriesCreateSerializer(data=request.data)
@@ -125,13 +131,27 @@ class SeriesView(APIView):
         series_id = serializer.validated_data[  # type: ignore
             "id"
         ]  # is_valid를 하면 validated_data attr가 생김.
+        try:
+            get_series_info(series_id=series_id)
+        except Exception as e:
+            return Response(
+                {
+                    "error_code": "SERIES_NOT_FOUND",
+                    "message": "시리즈가 존재하지 않습니다.",
+                    "detail": str(e),
+                },
+                status=404,
+            )
         user = request.user
-
         try:
             title, image_src = get_title_with_selenium(series_id=series_id).values()
         except Exception as e:
             return Response(
-                {"error": str(e), "message": "시리즈를 가져오는데 실패했습니다."},
+                {
+                    "error_code": "SERIES_INFO_FETCH_FAILED",
+                    "message": "시리즈 정보를 가져오는데 실패했습니다.",
+                    "detail": str(e),
+                },
                 status=500,
             )
 
@@ -156,8 +176,8 @@ class SeriesDetailView(APIView):
         operation_description="Retrieve a series by ID",
         responses={
             200: SeriesSerializer,
-            404: "Not Found",
-        },  # Swagger에 응답 스키마 표시
+            404: ErrorResponseSerializer,
+        },
         manual_parameters=[
             get_path_parameter(
                 name="series_id",
@@ -170,7 +190,14 @@ class SeriesDetailView(APIView):
         try:
             series = Series.objects.get(id=series_id)
         except Series.DoesNotExist:
-            return Response({"error": "Series not found"}, status=404)
+            return Response(
+                {
+                    "error_code": "SERIES_NOT_FOUND",
+                    "message": "시리즈를 찾을 수 없습니다.",
+                    "detail": f"ID {series_id}에 해당하는 시리즈가 존재하지 않습니다.",
+                },
+                status=404,
+            )
 
         serializer = SeriesSerializer(series)
         return Response(serializer.data)
@@ -182,14 +209,22 @@ class EpisodeCrawlView(APIView):
     @swagger_auto_schema(
         operation_description="에피소드를 크롤링하여 db에 저장합니다.",
         responses={
-            207: EpisodeCreateResponseSerializer(),  # 상태 코드 207 사용
+            207: EpisodeCreateResponseSerializer(),
+            200: ErrorResponseSerializer,  # NO_NEW_EPISODES
+            500: ErrorResponseSerializer,  # EPISODE_CRAWL_FAILED
         },
     )
     def post(self, request: Request, series_id: int) -> Response:
 
         episode_count = get_episode_count_by_series(series_id=series_id)
         if episode_count <= Episode.objects.filter(series=series_id).count():
-            return Response({"message": "에피소드를 크롤링할 필요가 없습니다."})
+            return Response(
+                {
+                    "error_code": "NO_NEW_EPISODES",
+                    "message": "에피소드를 크롤링할 필요가 없습니다.",
+                    "detail": "모든 에피소드가 이미 수집되었습니다.",
+                }
+            )
 
         user = request.user
         try:
@@ -199,7 +234,11 @@ class EpisodeCrawlView(APIView):
             ]
         except Exception as e:
             return Response(
-                {"error": str(e), "message": "에피소드를 가져오는데 실패했습니다."},
+                {
+                    "error_code": "EPISODE_CRAWL_FAILED",
+                    "message": "에피소드를 가져오는데 실패했습니다.",
+                    "detail": str(e),
+                },
                 status=500,
             )
 
@@ -282,7 +321,7 @@ class EpisodeDetailView(APIView):
         operation_description="특정 시리즈의 에피소드를 조회합니다.",
         responses={
             200: EpisodeSerializer,
-            404: "Not Found",
+            404: ErrorResponseSerializer,
         },
         manual_parameters=[
             get_path_parameter(
@@ -296,7 +335,14 @@ class EpisodeDetailView(APIView):
         try:
             episode = Episode.objects.get(id=product_id)
         except Episode.DoesNotExist:
-            return Response({"error": "Episode not found"}, status=404)
+            return Response(
+                {
+                    "error_code": "EPISODE_NOT_FOUND",
+                    "message": "에피소드를 찾을 수 없습니다.",
+                    "detail": f"ID {product_id}에 해당하는 에피소드가 존재하지 않습니다.",
+                },
+                status=404,
+            )
 
         serializer = EpisodeSerializer(episode)
         return Response(serializer.data)
@@ -313,7 +359,9 @@ class CommentCrawlView(APIView):
             ),
         ],
         responses={
-            207: EpisodeCreateResponseSerializer(),  # 상태 코드 207 사용
+            207: EpisodeCreateResponseSerializer(),
+            200: ErrorResponseSerializer,  # NO_NEW_COMMENTS
+            500: ErrorResponseSerializer,  # COMMENT_CRAWL_FAILED
         },
     )
     def post(self, request: Request, product_id: int) -> Response:
@@ -322,13 +370,24 @@ class CommentCrawlView(APIView):
             series_id=series_id, product_id=product_id
         )
         if comment_count <= Comment.objects.filter(id=product_id).count():
-            return Response({"message": "댓글을 크롤링할 필요가 없습니다."})
+            return Response(
+                {
+                    "error_code": "NO_NEW_COMMENTS",
+                    "message": "댓글을 크롤링할 필요가 없습니다.",
+                    "detail": "모든 댓글이 이미 수집되었습니다.",
+                }
+            )
 
         try:
             data = get_comments_by_episode(series_id=series_id, product_id=product_id)
         except Exception as e:
             return Response(
-                {"error": str(e), "message": "댓글을 가져오는데 실패했습니다."}
+                {
+                    "error_code": "COMMENT_CRAWL_FAILED",
+                    "message": "댓글을 가져오는데 실패했습니다.",
+                    "detail": str(e),
+                },
+                status=500,
             )
 
         valid_instances, valid_data, invalid_data = validate_and_separate_data(
