@@ -50,7 +50,4 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         },
     )
     def post(self, request, *args, **kwargs):
-        """
-        Custom token obtain pair view to handle additional logic if needed.
-        """
         return super().post(request, *args, **kwargs)

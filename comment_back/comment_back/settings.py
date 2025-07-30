@@ -35,6 +35,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:4173",
     "http://localhost:6006",
 ]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://localhost:(5173|4173|6006)$",
+]
 
 INTERNAL_IPS = [
     "127.0.0.1",
@@ -167,7 +171,7 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),  # Access 토큰 유효 시간
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),  # Access 토큰 유효 시간
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),  # Refresh 토큰 유효 시간
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": True,

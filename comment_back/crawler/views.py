@@ -223,7 +223,8 @@ class EpisodeCrawlView(APIView):
                     "error_code": "NO_NEW_EPISODES",
                     "message": "에피소드를 크롤링할 필요가 없습니다.",
                     "detail": "모든 에피소드가 이미 수집되었습니다.",
-                }
+                },
+                status=200,
             )
 
         user = request.user
