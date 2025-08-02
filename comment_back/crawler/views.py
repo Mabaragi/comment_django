@@ -463,3 +463,45 @@ class CommentListView(ListAPIView):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+
+class CommentCountView(APIView):
+    """
+    에피소드의 댓글 개수를 조회하는 API 뷰입니다.
+    """
+
+    @swagger_auto_schema(
+        operation_description="특정 에피소드의 댓글 개수를 조회합니다.",
+        manual_parameters=[
+            get_path_parameter(
+                name="product_id",
+                description="댓글 개수를 조회할 에피소드의 ID",
+                default=DEFAULT_EPISODE_ID,
+            ),
+        ],
+        responses={
+            200: CommentCountSerializer,
+            404: ErrorResponseSerializer,
+        },
+    )
+    def get(self, request: Request, product_id: int) -> Response:
+
+        count = Comment.objects.filter(episode=product_id).count()
+        spam_count = Comment.objects.filter(episode=product_id, is_spam=True).count()
+        not_spam_count = Comment.objects.filter(
+            episode=product_id, is_spam=False
+        ).count()
+        unprocessed_count = Comment.objects.filter(
+            episode=product_id, is_spam=None
+        ).count()
+        serializer = CommentCountSerializer(
+            data={
+                "count": count,
+                "spam_count": spam_count,
+                "not_spam_count": not_spam_count,
+                "unprocessed_count": unprocessed_count,
+                "episode_id": product_id,
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)

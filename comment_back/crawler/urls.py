@@ -31,4 +31,9 @@ urlpatterns = [
         CommentCrawlView.as_view(),
         name="comment-crawl",
     ),
+    path(
+        "episode/<int:product_id>/comment/count",
+        CommentCountView.as_view(),
+        name="comment-count",
+    ),
 ]

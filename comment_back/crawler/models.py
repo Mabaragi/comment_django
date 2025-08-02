@@ -36,9 +36,11 @@ class Comment(models.Model):
     ai_category = models.CharField(max_length=100, null=True, blank=True)
     ai_reason = models.TextField(null=True, blank=True)
     ai_emotion_score = models.IntegerField(null=True)
+    is_spam = models.BooleanField(null=True, default=None)  # 스팸 여부
 
     # AI 분류 완료 여부 플래그
     is_ai_processed = models.BooleanField(default=False)
+
     ai_processed_at = models.DateTimeField(null=True, blank=True)  # AI 처리 완료 시간
 
     series = models.ForeignKey(Series, on_delete=models.CASCADE)

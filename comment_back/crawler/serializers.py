@@ -69,3 +69,19 @@ class CommentSerializer(DynamicFieldsModelSerializer):
 class CommentCreateResponseSerializer(serializers.Serializer):
     created_data = CommentSerializer(many=True)
     error_items = serializers.ListField(child=serializers.DictField())
+
+
+class CommentCountSerializer(serializers.Serializer):
+    count = serializers.IntegerField(help_text="댓글 개수")
+    spam_count = serializers.IntegerField(help_text="스팸 댓글 개수")
+    not_spam_count = serializers.IntegerField(help_text="스팸이 아닌 댓글 개수")
+    unprocessed_count = serializers.IntegerField(
+        help_text="AI 분류가 완료되지 않은 댓글 개수"
+    )
+
+    episode_id = serializers.IntegerField(help_text="에피소드 ID")
+
+    def validate_episode_id(self, value):
+        if not Episode.objects.filter(id=value).exists():
+            raise serializers.ValidationError("해당 에피소드 ID는 존재하지 않습니다.")
+        return value
