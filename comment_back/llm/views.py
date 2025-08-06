@@ -172,7 +172,9 @@ class CommentEmotionAnalysisView(APIView):
 
     def _get_unprocessed_comments(self, episode: Episode) -> tuple[List[Comment], dict]:
         """미처리 댓글 조회 및 맵핑 딕셔너리 생성"""
-        comments = Comment.objects.filter(episode=episode, is_ai_processed=False)
+        comments = Comment.objects.filter(
+            episode=episode, is_ai_processed=False, is_spam=None
+        )
         comments_map = {comment.id: comment for comment in comments}
         return list(comments), comments_map
 
@@ -205,6 +207,7 @@ class CommentEmotionAnalysisView(APIView):
             # 댓글 정보 업데이트
             comment.ai_emotion_score = item.get("score")
             comment.ai_reason = item.get("reason")
+            comment.is_spam = item.get("is_spam")
             comment.is_ai_processed = True
             comment.ai_processed_at = timezone.now()
             comments_to_update.append(comment)
@@ -223,6 +226,7 @@ class CommentEmotionAnalysisView(APIView):
                 "ai_reason",
                 "is_ai_processed",
                 "ai_processed_at",
+                "is_spam",
             ],
         )
         logger.info(f"{len(comments_to_update)}개 댓글 감정 분석 완료")
