@@ -231,6 +231,24 @@ class CommentEmotionAnalysisView(APIView):
         )
         logger.info(f"{len(comments_to_update)}개 댓글 감정 분석 완료")
 
+    def _reset_comments_analysis(self, episode: Episode) -> int:
+        """에피소드의 댓글 AI 분석 결과 초기화"""
+        processed_comments = Comment.objects.filter(
+            episode=episode, is_ai_processed=True
+        )
+
+        reset_count = processed_comments.count()
+        if reset_count > 0:
+            processed_comments.update(
+                ai_emotion_score=None,
+                ai_reason=None,
+                is_spam=None,
+                is_ai_processed=False,
+                ai_processed_at=None,
+            )
+
+        return reset_count
+
     @swagger_auto_schema(
         operation_description="댓글 감정 분석 실행",
         operation_summary="에피소드의 미처리 댓글들에 대해 감정 분석을 수행합니다.",
@@ -286,3 +304,38 @@ class CommentEmotionAnalysisView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @swagger_auto_schema(
+        operation_description="댓글 감정 분석 결과 초기화",
+        operation_summary="에피소드의 모든 댓글 AI 분석 결과를 초기화합니다.",
+        manual_parameters=[
+            get_path_parameter(
+                "episode_id",
+                description="초기화할 댓글들이 속한 에피소드의 ID",
+                default=DEFAULT_EPISODE_ID,
+            ),
+        ],
+        responses={
+            200: "초기화 성공",
+            404: "Not Found - 에피소드를 찾을 수 없음",
+        },
+    )
+    def delete(self, request: Request, episode_id: int):
+        """댓글 감정 분석 결과 초기화"""
+        episode = get_object_or_404(Episode, id=episode_id)
+
+        # AI 분석 결과 초기화
+        reset_count = self._reset_comments_analysis(episode)
+
+        logger.info(
+            f"에피소드 {episode_id}의 {reset_count}개 댓글 분석 결과 초기화 완료"
+        )
+
+        return Response(
+            {
+                "message": f"AI 분석 결과가 초기화되었습니다.",
+                "reset_count": reset_count,
+                "episode_id": episode_id,
+            },
+            status=status.HTTP_200_OK,
+        )
