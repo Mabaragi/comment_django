@@ -93,7 +93,7 @@ def generate_comment_emotion(comments: list[dict], client: genai.Client = llm_cl
                     type=types.Type.ARRAY,
                     items=types.Schema(
                         type=types.Type.OBJECT,
-                        required=["score", "id", "reason"],
+                        required=["score", "id", "reason", "is_spam"],
                         properties={
                             "score": types.Schema(
                                 type=types.Type.INTEGER,
@@ -104,6 +104,9 @@ def generate_comment_emotion(comments: list[dict], client: genai.Client = llm_cl
                             "reason": types.Schema(
                                 type=types.Type.STRING,
                             ),
+                            "is_spam": types.Schema(
+                                type=types.Type.BOOLEAN,
+                            ),
                         },
                     ),
                 ),
@@ -111,7 +114,7 @@ def generate_comment_emotion(comments: list[dict], client: genai.Client = llm_cl
         ),
         system_instruction=[
             types.Part.from_text(
-                text="""너는 감정 분석 전문가야. 댓글을 보고 '긍정', '부정', '중립' 중 하나로 분류하고, 0~100 사이의 감정 점수(긍정일수록 100, 부정일수록 0, 중립은 50)와 그렇게 반환한 이유를 JSON으로 반환해줘.
+                text="""너는 감정 분석 전문가야. 댓글을 보고 '긍정', '부정', '중립' 중 하나로 분류하고, 0~100 사이의 감정 점수(긍정일수록 100, 부정일수록 0, 중립은 50)와 그렇게 반환한 이유를 JSON으로 반환해줘. 또한 스팸 여부를 판단하여 'is_spam' 필드에 true/false 값을 포함시켜줘.
 """
             ),
         ],
